@@ -5,7 +5,7 @@ package Example_3_Module {
     import com.google.inject.Guice
     import com.google.inject.AbstractModule
     import com.google.inject.Provides
-    import javax.inject.Inject
+    import javax.inject.{Inject, Named}
 
     /**
       * Guice 也可以通过 Module 功能来载入功能实例。例如以下定义一个名为 TextEditorModule 的模块，在模块内通过
@@ -14,20 +14,27 @@ package Example_3_Module {
       * 1) 定义一个 Module
       * */
     class TextEditorModule extends AbstractModule {
-        override protected def configure(): Unit = {
+
+        import com.google.inject.name.Names
+
+        /** 设置参数 */
+        override def configure(): Unit = {
+            bindConstant.annotatedWith(Names.named("user name")).to("John")
+            bindConstant.annotatedWith(Names.named("timeout")).to(200)
         }
 
-        /** 2) 声明一个 SpellChecker 的实例 */
-        @Provides def provideSpellChecker: SpellChecker = {
-            val dbUrl = "jdbc:mysql://localhost:5326/emp"
-            val user = "user"
-            val timeout = 100
-            val spellChecker = new SpellChecker(dbUrl, user, timeout) {
+        /**
+          * 2) 声明一个 SpellChecker 的实例
+          *
+          * 可以给参数, 给参数定义一个 name，值可以通过 configure 显式定义，或通过其他 @Provides （隐式）注入。
+          * */
+        @Provides def provideSpellChecker(@Named("user name") id:String, @Named("timeout") timeout:Integer) : SpellChecker= {
+            val spellChecker = new SpellChecker("jdbc:mysql://localhost:5326/emp", id+" Long", timeout) {
                 override def checkSpelling(): Unit =  {
                     System.out.println("Inside checkSpelling.")
-                    System.out.println(dbUrl)
-                    System.out.println(user)
-                    System.out.println(timeout)
+                    System.out.println(this.url)
+                    System.out.println(this.user)
+                    System.out.println(this.t)
                 }
             }
             spellChecker
@@ -35,7 +42,7 @@ package Example_3_Module {
     }
 
     /** 2-1) SpellChecker 实例的接口定义 */
-    abstract class SpellChecker(dbUrl:String, user:String, timeout:Integer) {
+    abstract class SpellChecker(val url:String, val user:String, val t:Integer) {
         def checkSpelling()
     }
 
@@ -55,6 +62,7 @@ package Example_3_Module {
             spellChecker.checkSpelling
         }
     }
+
     object GuiceTester2 extends App {
         val injector = Guice.createInjector(new TextEditorModule)   // 同样需要显示声明模块，因为模块中有实例化函数 @Providers
 
